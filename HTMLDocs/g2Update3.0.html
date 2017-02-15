@@ -1,0 +1,405 @@
+<!--
+    X-Add responsive design
+    -Add graph and table clear... before each function evaluation?
+    X-Add user defined constraints still need to def xlimits in evaluateExpression()
+    X-Add movable origin ^
+    -Increase code efficiency
+    --Add table addition feature
+    X-Add border to table
+    -Consider moving table to a tab
+-->
+<!DOCTYPE html>
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html;" charset="utf-8">
+      <style>
+      canvas{
+         border : 2px solid black;
+      }
+      table, tr, td{
+         border : 1px solid;
+      }
+      *{
+         background-color : white;
+      }
+      .para{
+         display : none;
+      }
+      .error{
+         color : red;
+      }
+      </style>
+      <script src="Algebra.js"></script>
+   </head>
+   <body>
+      <center><canvas id="graph" height="400" width="400" ></canvas></center><!--Add responsive design to canvas-->
+
+ 
+      <center>
+         <select id="select" onchange="changeFunctionType()">
+            <option value="Rect" selected>Rect</option>
+            <option value="Polar">Polar</option>
+            <option value="Parametric">Para</option>
+         </select>
+         <span id="label1">y=</span><input type="text" id="input" size="5"></input>
+         <span id="label2" class="para">x=</span><input type="text" id="input2" size="5" class="para"></input>
+         <button id="graphButton" onclick="evaluateFunction()">graph</button>
+         <button onclick="openHelp()">help</button>
+         </br>
+         <span id="error1" class="error"></span>
+         </br>
+         <span id="error2" class="error"></span>
+      </center><br>
+
+     <center><span id="tLimitContainer" style="display:none;"><input type="number" id="lowerLimitT" value="-10" size="3"></input><span id="tLimitLabel">&lt;t&lt;</span><input type="number" id="upperLimitT" value="10" size="3"></input></span><br />
+     <input type="number" id="leftLimitX" value="-10" size="3" ></input><span>&lt;x&lt;</span><input type="number" id="rightLimitX" value="10" size="3"></input><br/>
+      <input type="number" id="lowerLimitY" value="-10" size="3"></input><span>&lt;y&lt;</span><input type="number" id="upperLimitY" value="10" size="3"></input><br>
+      <button onclick="updateOrigin(document.getElementById('leftLimitX').value,document.getElementById('rightLimitX').value,document.getElementById('lowerLimitY').value,document.getElementById('upperLimitY').value)">update limits</button></center>
+
+      <!--<p id="log">log</p>-->
+
+      <table id="output" ><!--add table and tr, td to class="table-->
+         <tr>
+            <td>X</td>
+            <td>Y</td>
+         </tr>
+      </table>
+   </body>
+</html>
+      <script>
+         var increment; //used as initial value for xUnit and yUnit
+
+         var xUnit;// = increment; //size of 1 x unit in screen coords
+         var yUnit;// = increment; //size of 1 y unit in screen coords
+         var xOrigin;// = increment*10; //location of x=0 in screen coords
+         var yOrigin;// = increment*10; //location of y=0 in screen coords
+         var dimensions;
+
+	 /***********************************************************************
+         /This function updates the x and y units based on the values obtained from
+         /the document. It then clears and redraws the axes and the last function drawn.
+         ************************************************************************/ 
+         function updateOrigin(leftLimitX, rightLimitX, upperLimitY, lowerLimitY)
+         {
+            //get ranges
+            var xRange=Math.abs(rightLimitX-leftLimitX);
+            var yRange=Math.abs(upperLimitY-lowerLimitY);
+            //resize units based on ranges
+            xUnit = document.getElementById('graph').width/xRange;
+            yUnit = document.getElementById('graph').height/yRange;
+            //redraw origin from upper left hand corner
+            xOrigin = Math.abs(leftLimitX*xUnit); 
+            yOrigin = Math.abs(lowerLimitY*yUnit);
+            //redraw axes
+            clearGraph();
+            generateAxes(leftLimitX*xUnit, lowerLimitY*yUnit); //was upperLimitY
+            //reevaluate function according to updated values and function type
+             var dropDown = document.getElementById('select');
+             var funcType = dropDown.options[dropDown.selectedIndex].value;
+             if(funcType == "Rect")
+                evaluateFunction();
+             else if(funcType == "Polar")
+                evaluatePolarFunction();
+             else //is parametric
+                evaluateParaFunction();
+         }   
+       
+         function changeFunctionType()
+         {
+             var dropDown = document.getElementById('select');
+             var funcType = dropDown.options[dropDown.selectedIndex].value;
+             //alert(funcType);
+             if(funcType == "Rect"){
+                document.getElementById('graphButton').onclick=evaluateFunction;
+                //change label and hide para input/label
+                document.getElementById('label1').innerHTML="y=";
+                document.getElementById('label2').style.display='none';
+                document.getElementById('input2').style.display='none';
+                //hide t limits
+                document.getElementById('tLimitContainer').style.display="none";
+             }
+             else if(funcType == "Polar"){
+                document.getElementById('graphButton').onclick=evaluatePolarFunction;
+                //change label to "r=" and hide para input/label
+                document.getElementById('label1').innerHTML="r=";
+                document.getElementById('label2').style.display="none";
+                document.getElementById('input2').style.display="none";
+                //hide t limits
+                document.getElementById('tLimitContainer').style.display="none";
+             }
+             else{ //is parametric
+                document.getElementById('graphButton').onclick=evaluateParaFunction;
+                //set para input/label to visible
+                document.getElementById('label1').innerHTML="y=";
+                document.getElementById('label2').style.display="inline-block";
+                document.getElementById('input2').style.display="inline-block";
+                //show t limits
+                document.getElementById('tLimitContainer').style.display="inline-block";
+             }
+         }
+
+         function clearErrors(){
+            document.getElementById("error1").innerHTML="";
+            document.getElementById("error2").innerHTML="";
+         }
+
+         function evaluatePolarFunction()
+         {
+            //clear error strings
+            clearErrors();
+            //may need to reconfig some HTML elements (label, etc)
+            var rawExpression = document.getElementById('input').value;
+            var alg = new Algebra(rawExpression);
+            if(alg.isError()){
+               document.getElementById("error1").innerHTML="*r(\u03b8): "+alg.getErrorString();
+               return;
+            }
+            var expression = alg.getJS();
+            //change tan, arctan, sqrt to uppercase so as not to interfere with oldR
+            /*expression = expression.replace(new RegExp("tan", "g"), "TAN")
+                                   .replace(new RegExp("sqrt", "g"), "SQRT");*/
+            var r = 0;
+            //change table for polar coords
+            var displayCount = 0; //used to output to table at t=0,pi/4,pi/2,3pi/4, pi, 5pi/4, 3pi/2, 7pi/4, 2pi loop cycles
+            document.getElementById('output').innerHTML="<tr><td>r="+rawExpression.replace( new RegExp("t", "g"), "\u03b8") +"</td></tr>";
+            document.getElementById('output').innerHTML+="<tr><td>\u03b8</td><td>R</td></tr>"
+            var oldR = NaN;
+            for(var t=0; t <= 2*PI; t+=PI/128)//t = theta find better replacement t, e out
+            {
+//alert("here: "+expression.replace(new RegExp("t", "g"), "(t-PI/128)"));
+               //oldR = eval(expression.replace(new RegExp("t", "g"), "(t-PI/128)"));
+               //console.log(oldR);
+               r = eval(expression);
+               if(oldR === NaN)
+                  oldR = r;
+               //add table functionality
+               if(displayCount++%32==0)
+               {
+                  document.getElementById('output').innerHTML+="<tr><td>"+(t/PI).toPrecision(3)+"\u03c0</td><td>"+r.toPrecision(3)+"</td></tr>";
+               }
+               //plot
+               
+               plot( oldR*cos(t-PI/128),  oldR*sin(t-PI/128), r*cos(t), r*sin(t)); //send to plot converted to rectangular coords
+               oldR = r;
+            }
+         }
+         
+         function evaluateParaFunction()
+         {
+            clearErrors();
+            var rawYExpression = document.getElementById('input').value;
+            var rawXExpression = document.getElementById('input2').value;
+            var algX = new Algebra(rawXExpression);
+            var algY = new Algebra(rawYExpression);
+            if(algY.isError()){
+               document.getElementById("error1").innerHTML="*y(t): "+algY.getErrorString();
+               return;
+            }
+            if(algX.isError()){
+               document.getElementById("error2").innerHTML="*x(t): "+algX.getErrorString();
+               return;
+            } 
+            var xExpression = algX.getJS();
+            var yExpression = algY.getJS();    
+            console.log(xExpression);
+            console.log(yExpression);      
+            //modify function names to allow graphing
+            /*yExpression = yExpression.replace(new RegExp("tan", "g"), "TAN")
+                                     .replace(new RegExp("sqrt", "g"), "SQRT");
+            xExpression = xExpression.replace(new RegExp("tan", "g"), "TAN")
+                                     .replace(new RegExp("sqrt", "g"), "SQRT");*/
+            var x = 0;
+            var y = 0;//oldX, oldY not defined
+            var lowerLimitT = new Number(document.getElementById('lowerLimitT').value);
+            var upperLimitT = new Number(document.getElementById('upperLimitT').value);
+            //reset table for parametric function
+            var displayCount = 0; //used to output to table every 8 loop cycles
+            document.getElementById('output').innerHTML="<tr><td>y="+rawYExpression+"</td><td>x="+rawXExpression+"</td></tr>";
+            document.getElementById('output').innerHTML+="<tr><td>T</td><td>X</td><td>Y</td></tr>";
+            var oldX = NaN;
+            var oldY = NaN;
+            for(var t=lowerLimitT; t < upperLimitT+1; t+=0.125)//make t limits user defined
+            {
+               x = eval(xExpression);
+               y = eval(yExpression);
+               if(oldX === NaN)
+                  oldX=x;
+               if(oldY === NaN)
+                  oldY=y;
+               //add table functionality
+               if(displayCount++%8==0)
+               {
+                  document.getElementById('output').innerHTML+='<tr><td>'+t+'</td><td>'+x.toPrecision(3)+'</td><td>'+y.toPrecision(3)+'</td></tr>';
+               }
+               plot( oldX, oldY, x, y);
+               oldX = x;
+               oldY = y;
+             }
+         }
+         /***********************************************************************
+         /This function is the heart of the program. It graph the function found
+         /in the document. It also clears and fills the table based on the function
+         /outputs.
+         ***********************************************************************/
+         function evaluateFunction()
+         {
+            clearErrors();
+            var rawExpression = document.getElementById('input').value;
+            var alg = new Algebra(rawExpression);
+            if(alg.isError()){
+               document.getElementById("error1").innerHTML="*y(x): "+alg.getErrorString();
+               return;
+            }
+            var expression = alg.getJS();
+            var y=0;
+            var displayCount = 0; //allows only whole number X values to be printed to table
+            //reset table
+            document.getElementById('output').innerHTML="<tr>y="+rawExpression+"</tr>";
+            document.getElementById('output').innerHTML+="<tr><td>X</td><td>Y</td></tr>";
+            //get limits
+            var leftLimitX = new Number(document.getElementById('leftLimitX').value);
+            var rightLimitX = new Number(document.getElementById('rightLimitX').value);
+            /*These clear old values consider making that optional so multiple graphs can be side by side and cleared at will*/
+            //document.getElementById('output').innerHTML="<tr><td>X</td><td>Y</td></tr>";
+            //clearGraph();
+            //generateAxes();
+
+            for(var x=leftLimitX; x<rightLimitX+1; x+=0.125) //make these limits responsive... or better yet user defined! //must define inc here
+            {
+               //eval("var y=insertXVal("+x+","+expression+");");
+               //eval("var y="+expression+";");
+               
+               oldY = eval(expression.replace(new RegExp("x", "g"), "(x-0.125)"));
+               y=eval(expression);
+             
+               if(displayCount++%8==0)//8 because .125*8=1 so every 8 displayCounts yield a whole number
+               {
+                  document.getElementById('output').innerHTML+='<tr><td>'+/*Math.floor(x)*/x+'</td><td>'+y.toPrecision(3)+'</td></tr>'; 
+               }
+               if(x>leftLimitX)
+               {
+                  plot( x-0.125/*and here*/, oldY, x, y); 
+               }
+            }
+          }
+          /********************************************************************************
+          //This function plots the points and draws lines to the current ones forming
+          //a graph of a function.
+          *********************************************************************************/
+          function plot(x1, y1, x2, y2)
+          {
+             var ctx = document.getElementById('graph').getContext('2d');
+             ctx.strokeStyle="#ff000f";//make this a setting
+             ctx.beginPath();
+             ctx.moveTo(convertX(x2),convertY(y2));
+             ctx.lineTo(convertX(x1),convertY(y1));
+             ctx.stroke();
+          }
+          /*********************************************************************************
+          //convertX() and convertY() translate the respective coordinate from its actual 
+          //position to its screen position so that the function may have movable screen limits
+          **********************************************************************************/
+          function convertX(val)
+          {
+             var xL = new Number(document.getElementById("leftLimitX").value); //left limit of x input by user
+             var xR = new Number(document.getElementById('rightLimitX').value);//right limit of x input by user
+             if( xL > 0 && xR > 0)
+                return (val-xL)*xUnit;//subtract xL so that drawing starts from the edge of screen not at first vals screen location
+             else
+                return val*xUnit+xOrigin;
+          }
+          function convertY(val)
+          {  
+             return -val*yUnit+yOrigin; //negative to flip from screen coords to real, then multiplied by unit size and added to origin
+          }
+
+          /**********************************************************************
+          //clearGraph() is called by the generateAxes function in order to resize 
+          //the most recent function, it simply fills the canvas with a white rect.
+          ***********************************************************************/
+          function clearGraph()
+          {
+             var ctx = document.getElementById('graph').getContext('2d');
+             var size = document.getElementById('graph').width;
+             ctx.fillStyle="white";
+             ctx.rect(0,0,size,size);
+             ctx.fill(); //may need to set fillStyle to white
+          }
+          /**********************************************************************
+          //setCanvasSize() is called when the app is opened to size the graph to the screen
+          ***************************************************************************/
+          function setCanvasSize()
+          {
+             var rawHeight = window.screen.height;//window.screen.availHeight;
+             var rawWidth = window.screen.width;//window.screen.availWidth;
+             dimensions = 0.8 * rawWidth; //0.9 * 320; current value just for simulator (returns 0 screen Width):(
+             increment = dimensions/20;
+             document.getElementById('graph').height=dimensions;
+             document.getElementById('graph').width=dimensions;
+
+             xUnit = increment; //size of 1 x unit in screen coords
+             yUnit = increment; //size of 1 y unit in screen coords
+             xOrigin = increment*10; //location of x=0 in screen coords
+             yOrigin = increment*10; //location of y=0 in screen coords
+          }
+          //openHelp() switches to help screen
+          function openHelp()
+          {
+             window.open("help.html", "_self"); //include returnToGraph() in help.html
+          }
+          /*************************************************************************
+          //generateAxes() redraws the axes every time the user updates the screen
+          //limits.
+          **************************************************************************/
+          function generateAxes(leftLimitX, upperLimitY)
+          {
+             var graph = document.getElementById('graph');
+             console.log(graph);
+             var ctx = document.getElementById('graph').getContext('2d');
+             var xZero, yZero;
+             ctx.strokeStyle="#000000";
+             //Y-axis
+             if(leftLimitX <= 0 )
+             {
+                xZero = Math.abs(leftLimitX);
+                ctx.beginPath();
+                ctx.moveTo(xZero, 0);
+                console.log(graph.height);
+                ctx.lineTo(xZero, graph.height);
+                ctx.stroke();
+             }
+             else{console.log(leftLimitX)};
+  	     //X-axis
+             if(upperLimitY >= 0)
+             {
+                yZero = Math.abs(upperLimitY);
+                ctx.beginPath();
+                ctx.moveTo(0, yZero);
+                ctx.lineTo(graph.width, yZero);
+                ctx.stroke();
+             }
+          }  
+          //on opening app code
+          setCanvasSize();
+          generateAxes(-10*increment, 10*increment);      
+
+          /*list of simplified Math. functions to increase user friendliness*/
+          function arcsin(x){return Math.asin(x)}
+          function arccos(x){return Math.acos(x)}
+          function arctan(x){return Math.atan(x)}
+          function arcTAN(x){return Math.atan(x)}
+          function sin(x){return Math.sin(x)}
+          function cos(x){return Math.cos(x)}
+          function tan(x){return Math.tan(x)}
+          function TAN(x){return Math.tan(x)}
+          function pow(x,n){return Math.pow(x,n)}
+          function ln(x){return Math.log(x)}
+          function abs(x){return Math.abs(x)}
+          function exp(x){return Math.exp(x)}
+          function sqrt(x){return Math.sqrt(x)}
+          function SQRT(x){return Math.sqrt(x)}
+          var e = Math.E;
+          var E = Math.E;
+          var PI = Math.PI;
+          var pi = Math.PI;
+       </script>

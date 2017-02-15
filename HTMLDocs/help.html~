@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <script>
+         function returnToGraph()
+         {
+            window.open("g2Update3.0.html", "_self");
+         }
+         //prevents nav problems on FFOS
+         function gotoSite(url)
+         {
+            window.open(url);
+         }
+       </script>
+       <style>
+          footer{
+             font-size : 6px;
+          }
+          lh{
+             font-style : bold;
+             font-size : 14px;
+          }
+          li, p{
+             font-size : 10.5px
+          }
+      </style>
+    </head>
+    <body>
+       <button onclick="returnToGraph()">graph</button>
+       <h6>Example Input:</h6>
+       <p><strong>Valid:</strong><br/>Rect: y = 2x+sin(x)^3<br/>Polar: r = sin(4t)/2 //(use t for &#x03b8)<br/>Para: y = 4sin(2t) x = 4cos(t) </p>
+       <p>With update 3.0 implicit multiplication and the 'a^b' syntax for exponentiation are now valid.</p>
+       <p><strong>To clear graph:</strong> set x and y limits and leave y= blank.</p>
+       <ul>
+          <lh><strong>Available Functions &nbsp; &amp; &nbsp; Constants</strong></lh> 
+          <li>arccos()</li>
+          <li>arcsin()</li>
+          <li>arctan()</li>
+          <li>cos()</li>
+          <li>sin()</li>
+          <li>tan()</li>
+          <li>pow(n,m) //n raised to the power m (n^m)</li>
+          <li>exp()    //e raised to power n exp(n)</li>
+          <li>abs()</li>
+          <li>log() </li><!--consider changing to ln() and building your own log function-->
+          <li>sqrt()</li>
+          <li>E or e = 2.72...</li>
+          <li>PI or pi = 3.14...</li>
+       </ul>
+
+      <p>Thank you for downloading Graphy. The source code is available under a CC license at <a href="#" onclick="gotoSite('http://www.people.iup.edu/ypls/')">http://www.people.iup.edu/ypls/</a> 
+      </p>
+
+   <footer><!--Creative Commons License-->
+   <center>
+   <a rel="license" href="#"><img alt="Creative Commons License" onclick="gotoSite('http://creativecommons.org/licenses/by/3.0/deed.en_US')" style="border-width:0" src="http://i.creativecommons.org/l/by/3.0/80x15.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="#" onclick="gotoSite('http://purl.org/dc/dcmitype/InteractiveResource')" property="dct:title" rel="dct:type">Graphy</span> by <a xmlns:cc="http://creativecommons.org/ns#" href="#" onclick="gotoSite('http://www.people.iup.edu/ypls/')" property="cc:attributionName" rel="cc:attributionURL">H&H Apps</a> is licensed under a <a rel="license" href="#" onclick="gotoSite('http://creativecommons.org/licenses/by/3.0/deed.en_US')">Creative Commons Attribution 3.0 Unported License</a>.
+   </center>
+   </footer>
+   </body>
+</html>
